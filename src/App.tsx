@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Layout from './components/Layout';
+import RoomsPage from './pages/RoomsPage';
 import SchedulePage from './pages/SchedulePage';
 import RatePage from './pages/RatePage';
 import BillingPage from './pages/BillingPage';
@@ -10,6 +11,8 @@ export default function App() {
 
   const renderPage = () => {
     switch (currentPage) {
+      case 'rooms':
+        return <RoomsPage />;
       case 'schedule':
         return <SchedulePage />;
       case 'rate':

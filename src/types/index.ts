@@ -4,6 +4,7 @@ export interface Room {
   capacity: number;
   minConsumption: number;
   description: string;
+  active: boolean;
 }
 
 export type BookingStatus = 'confirmed' | 'cancelled' | 'completed';
@@ -36,6 +37,7 @@ export interface TierSegment {
   tierName: RateTierName;
   tierLabel: string;
   color: string;
+  pricePerHour: number;
   startTime: string;
   endTime: string;
   durationHours: number;
@@ -61,4 +63,4 @@ export interface ConflictResult {
   conflictingBookings: Booking[];
 }
 
-export type PageType = 'schedule' | 'rate' | 'billing';
+export type PageType = 'rooms' | 'schedule' | 'rate' | 'billing';

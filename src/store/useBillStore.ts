@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { Bill, BillStatus } from '../types';
+import { persist } from 'zustand/middleware';
+import type { Bill, BillStatus, RateTier } from '../types';
 import { mockBills } from '../data/mockData';
 import { generateId } from '../utils/datetime';
 import { calculateBilling } from '../utils/billing';
@@ -11,7 +12,7 @@ interface BillState {
     roomId: string,
     startTime: string,
     endTime: string,
-    rateTiers: any[],
+    rateTiers: RateTier[],
     minConsumption: number
   ) => Bill;
   updateBillStatus: (id: string, status: BillStatus) => void;
@@ -21,57 +22,64 @@ interface BillState {
   refundBill: (id: string) => void;
 }
 
-export const useBillStore = create<BillState>((set, get) => ({
-  bills: mockBills,
+export const useBillStore = create<BillState>()(
+  persist(
+    (set, get) => ({
+      bills: mockBills,
 
-  createBill: (bookingId, roomId, startTime, endTime, rateTiers, minConsumption) => {
-    const billing = calculateBilling(startTime, endTime, rateTiers, minConsumption);
-    
-    const newBill: Bill = {
-      id: generateId(),
-      bookingId,
-      roomId,
-      baseAmount: billing.baseAmount,
-      minConsumption,
-      finalAmount: billing.finalAmount,
-      tierDetails: billing.tierDetails,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
-    
-    set((state) => ({ bills: [...state.bills, newBill] }));
-    return newBill;
-  },
+      createBill: (bookingId, roomId, startTime, endTime, rateTiers, minConsumption) => {
+        const billing = calculateBilling(startTime, endTime, rateTiers, minConsumption);
 
-  updateBillStatus: (id, status) => {
-    set((state) => ({
-      bills: state.bills.map((b) =>
-        b.id === id ? { ...b, status } : b
-      ),
-    }));
-  },
+        const newBill: Bill = {
+          id: generateId(),
+          bookingId,
+          roomId,
+          baseAmount: billing.baseAmount,
+          minConsumption,
+          finalAmount: billing.finalAmount,
+          tierDetails: billing.tierDetails,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        };
 
-  getBillById: (id) => {
-    return get().bills.find((b) => b.id === id);
-  },
+        set((state) => ({ bills: [...state.bills, newBill] }));
+        return newBill;
+      },
 
-  getBillByBookingId: (bookingId) => {
-    return get().bills.find((b) => b.bookingId === bookingId);
-  },
+      updateBillStatus: (id, status) => {
+        set((state) => ({
+          bills: state.bills.map((b) =>
+            b.id === id ? { ...b, status } : b
+          ),
+        }));
+      },
 
-  settleBill: (id) => {
-    set((state) => ({
-      bills: state.bills.map((b) =>
-        b.id === id ? { ...b, status: 'settled' as BillStatus } : b
-      ),
-    }));
-  },
+      getBillById: (id) => {
+        return get().bills.find((b) => b.id === id);
+      },
 
-  refundBill: (id) => {
-    set((state) => ({
-      bills: state.bills.map((b) =>
-        b.id === id ? { ...b, status: 'refunded' as BillStatus } : b
-      ),
-    }));
-  },
-}));
+      getBillByBookingId: (bookingId) => {
+        return get().bills.find((b) => b.bookingId === bookingId);
+      },
+
+      settleBill: (id) => {
+        set((state) => ({
+          bills: state.bills.map((b) =>
+            b.id === id ? { ...b, status: 'settled' as BillStatus } : b
+          ),
+        }));
+      },
+
+      refundBill: (id) => {
+        set((state) => ({
+          bills: state.bills.map((b) =>
+            b.id === id ? { ...b, status: 'refunded' as BillStatus } : b
+          ),
+        }));
+      },
+    }),
+    {
+      name: 'tea-room-bills',
+    }
+  )
+);

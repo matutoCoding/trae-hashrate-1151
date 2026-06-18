@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Phone, Users, Clock, MapPin, AlertTriangle, XCircle, CheckCircle } from 'lucide-react';
+import { X, Phone, Users, Clock, MapPin, AlertTriangle, XCircle, CheckCircle, RotateCcw } from 'lucide-react';
 import { useRoomStore } from '../../store/useRoomStore';
 import { useBookingStore } from '../../store/useBookingStore';
 import { useBillStore } from '../../store/useBillStore';
@@ -31,7 +31,7 @@ export default function BookingDetailModal({
 
   const handleCancel = () => {
     cancelBooking(booking.id);
-    if (bill && bill.status === 'pending') {
+    if (bill && (bill.status === 'pending' || bill.status === 'settled')) {
       refundBill(bill.id);
     }
     setShowCancelConfirm(false);
@@ -51,8 +51,25 @@ export default function BookingDetailModal({
     }
   };
 
+  const getBillStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return { text: '待结算', className: 'bg-amber-100 text-amber-700' };
+      case 'settled':
+        return { text: '已结算', className: 'bg-bamboo-100 text-bamboo-700' };
+      case 'refunded':
+        return { text: '已退款', className: 'bg-ink-100 text-ink-500' };
+      default:
+        return { text: status, className: 'bg-ink-100 text-ink-500' };
+    }
+  };
+
   const statusInfo = getStatusLabel(booking.status);
   const duration = getDurationHours(booking.startTime, booking.endTime);
+  const hasMinConsumptionSupplement = bill ? bill.baseAmount < bill.minConsumption : false;
+  const supplementAmount = hasMinConsumptionSupplement && bill
+    ? bill.minConsumption - bill.baseAmount
+    : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -77,6 +94,25 @@ export default function BookingDetailModal({
         </div>
 
         <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+          {booking.status === 'cancelled' && (
+            <div className="bg-ink-50 rounded-xl p-4 border border-ink-200">
+              <div className="flex items-start gap-2">
+                <RotateCcw className="text-ink-400 flex-shrink-0 mt-0.5" size={18} />
+                <div>
+                  <p className="font-medium text-ink-600">已退订</p>
+                  <p className="text-sm text-ink-400 mt-1">
+                    排期已释放，该时段可被其他客户预订
+                  </p>
+                  {bill && bill.status === 'refunded' && (
+                    <p className="text-xs text-ink-400 mt-1">
+                      账单状态：已退款
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-sandal-50 rounded-xl p-4 border border-sandal-200">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-gold-100 flex items-center justify-center flex-shrink-0">
@@ -94,6 +130,11 @@ export default function BookingDetailModal({
                     低消 ¥{room.minConsumption}
                   </span>
                 </div>
+                {!room.active && (
+                  <div className="text-xs text-amber-600 mt-1">
+                    ⚠ 该包间当前已停用
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -144,33 +185,39 @@ export default function BookingDetailModal({
 
           {bill && bill.tierDetails.length > 0 && (
             <div className="bg-sandal-50 rounded-xl p-4 border border-sandal-200">
-              <h4 className="font-medium text-ink-700 mb-3">费用明细</h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-ink-700">费用明细</h4>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getBillStatusLabel(bill.status).className}`}>
+                  {getBillStatusLabel(bill.status).text}
+                </span>
+              </div>
+
               <div className="space-y-2">
                 {bill.tierDetails.map((seg, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ backgroundColor: seg.color }}
-                      />
-                      <span className="text-ink-600">{seg.tierLabel}</span>
-                      <span className="text-ink-400 text-xs">
-                        {seg.startTime}-{seg.endTime}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-ink-700 font-medium">
+                  <div key={idx} className="bg-white rounded-lg p-2.5 border border-sandal-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2.5 h-2.5 rounded-full"
+                          style={{ backgroundColor: seg.color }}
+                        />
+                        <span className="text-sm text-ink-700">{seg.tierLabel}</span>
+                        <span className="text-ink-400 text-xs">
+                          {seg.startTime}-{seg.endTime}
+                        </span>
+                      </div>
+                      <span className="text-ink-700 font-medium text-sm">
                         ¥{seg.amount.toFixed(2)}
                       </span>
-                      <span className="text-ink-400 text-xs ml-2">
-                        {seg.durationHours}h
-                      </span>
+                    </div>
+                    <div className="text-xs text-ink-400 mt-1 text-right">
+                      ¥{seg.pricePerHour.toFixed(2)}/h × {seg.durationHours}h
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-4 pt-3 border-t border-sandal-200 space-y-2">
+              <div className="mt-3 pt-3 border-t border-sandal-200 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-ink-600">基础费用</span>
                   <span className="text-ink-700">¥{bill.baseAmount.toFixed(2)}</span>
@@ -179,12 +226,22 @@ export default function BookingDetailModal({
                   <span className="text-ink-600">最低消费</span>
                   <span className="text-ink-700">¥{bill.minConsumption.toFixed(2)}</span>
                 </div>
-                {bill.baseAmount < bill.minConsumption && (
-                  <div className="flex items-center gap-1 text-amber-600 text-xs">
-                    <AlertTriangle size={14} />
-                    未达低消，按最低消费计费
+                {hasMinConsumptionSupplement && (
+                  <div className="flex justify-between text-sm text-amber-600">
+                    <span className="flex items-center gap-1">
+                      <AlertTriangle size={14} />
+                      低消补足
+                    </span>
+                    <span>+¥{supplementAmount.toFixed(2)}</span>
                   </div>
                 )}
+                <div className="flex justify-between text-xs text-ink-400 pt-1">
+                  <span>
+                    {hasMinConsumptionSupplement
+                      ? '基础费用未达低消，按最低消费计费'
+                      : '基础费用已满足低消门槛'}
+                  </span>
+                </div>
                 <div className="flex justify-between pt-2 border-t border-sandal-300">
                   <span className="font-medium text-ink-800">应付金额</span>
                   <span className="font-song text-2xl font-bold text-gold-600">
@@ -204,7 +261,7 @@ export default function BookingDetailModal({
                     <div>
                       <p className="font-medium">确认退订？</p>
                       <p className="text-sm text-red-500 mt-1">
-                        退订后时段将被释放，账单将标记为已退款
+                        退订后该时段将被释放，对应账单将标记为已退款
                       </p>
                     </div>
                   </div>

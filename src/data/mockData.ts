@@ -1,5 +1,5 @@
 import type { Room, Booking, RateTier, Bill } from '../types';
-import { generateId, addDays, addHours, getStartOfDay } from '../utils/datetime';
+import { addDays, getStartOfDay } from '../utils/datetime';
 
 function createTime(hours: number, minutes: number = 0): Date {
   const now = getStartOfDay(new Date());
@@ -13,8 +13,6 @@ function offsetTime(base: Date, hourOffset: number): string {
   return date.toISOString();
 }
 
-const today = getStartOfDay(new Date());
-
 export const mockRooms: Room[] = [
   {
     id: 'room-1',
@@ -22,6 +20,7 @@ export const mockRooms: Room[] = [
     capacity: 4,
     minConsumption: 288,
     description: '雅致小包间，适合朋友小聚品茗',
+    active: true,
   },
   {
     id: 'room-2',
@@ -29,6 +28,7 @@ export const mockRooms: Room[] = [
     capacity: 6,
     minConsumption: 488,
     description: '中式典雅风格，商务洽谈首选',
+    active: true,
   },
   {
     id: 'room-3',
@@ -36,6 +36,7 @@ export const mockRooms: Room[] = [
     capacity: 10,
     minConsumption: 888,
     description: '豪华大包间，团建聚会皆宜',
+    active: true,
   },
   {
     id: 'room-4',
@@ -43,6 +44,7 @@ export const mockRooms: Room[] = [
     capacity: 8,
     minConsumption: 688,
     description: '竹林主题设计，清幽静谧',
+    active: true,
   },
 ];
 
@@ -147,6 +149,7 @@ export const mockBills: Bill[] = [
         tierName: 'valley',
         tierLabel: '低谷时段',
         color: '#7CB342',
+        pricePerHour: 68,
         startTime: '09:00',
         endTime: '10:30',
         durationHours: 1.5,

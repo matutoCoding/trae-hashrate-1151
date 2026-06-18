@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { Clock, Info } from 'lucide-react';
+import { Clock, Info, AlertTriangle, CheckCircle } from 'lucide-react';
 import RateCard from '../components/RateCard';
-import { useRateStore } from '../store/useRateStore';
+import { useRateStore, validateTierOverlap } from '../store/useRateStore';
 import { useRoomStore } from '../store/useRoomStore';
 
 export default function RatePage() {
   const { rateTiers, updateRateTier, getSortedRateTiers } = useRateStore();
   const { rooms } = useRoomStore();
   const sortedTiers = getSortedRateTiers();
+  const globalErrors = validateTierOverlap(rateTiers);
 
   const handleUpdateRate = (id: string, data: any) => {
     updateRateTier(id, data);
@@ -31,10 +31,35 @@ export default function RatePage() {
 
   return (
     <div className="space-y-6">
+      {globalErrors.length > 0 && (
+        <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
+            <div>
+              <p className="font-medium text-red-700 mb-2">费率时段配置异常</p>
+              <div className="space-y-1">
+                {globalErrors.map((err, idx) => (
+                  <p key={idx} className="text-sm text-red-600">• {err}</p>
+                ))}
+              </div>
+              <p className="text-sm text-red-500 mt-2">
+                请修正后再保存，否则可能导致计费错误
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl shadow-soft border border-sandal-200 p-6">
         <div className="flex items-center gap-2 mb-4">
           <Clock className="text-gold-600" size={22} />
           <h2 className="font-song text-xl font-bold text-sandal-900">时段费率</h2>
+          {globalErrors.length === 0 && (
+            <span className="ml-2 flex items-center gap-1 text-bamboo-600 text-sm">
+              <CheckCircle size={16} />
+              配置正常
+            </span>
+          )}
         </div>
         <p className="text-sm text-ink-500 mb-6">
           配置不同时段的计费标准，系统将根据预订时间自动分段计算费用
@@ -42,7 +67,12 @@ export default function RatePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {sortedTiers.map((tier) => (
-            <RateCard key={tier.id} tier={tier} onUpdate={handleUpdateRate} />
+            <RateCard
+              key={tier.id}
+              tier={tier}
+              allTiers={rateTiers}
+              onUpdate={handleUpdateRate}
+            />
           ))}
         </div>
       </div>
@@ -105,6 +135,7 @@ export default function RatePage() {
                 <li>• 预订费用按实际占用时段分段计算，跨越费率切换点时自动拆分</li>
                 <li>• 各时段金额相加为基础费用，与包间最低消费取较高值计费</li>
                 <li>• 可在上方卡片中点击编辑按钮调整各时段价格和时间范围</li>
+                <li>• 编辑时段时系统会自动检测重叠和空档，避免计费异常</li>
               </ul>
             </div>
           </div>
@@ -114,7 +145,7 @@ export default function RatePage() {
       <div className="bg-white rounded-2xl shadow-soft border border-sandal-200 p-6">
         <h3 className="font-song text-lg font-bold text-sandal-900 mb-4">各包间最低消费</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {rooms.map((room) => (
+          {rooms.filter((r) => r.active).map((room) => (
             <div
               key={room.id}
               className="p-4 bg-sandal-50 rounded-xl border border-sandal-200 text-center"

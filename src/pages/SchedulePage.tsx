@@ -7,12 +7,14 @@ import { useRoomStore } from '../store/useRoomStore';
 import { useBookingStore } from '../store/useBookingStore';
 
 export default function SchedulePage() {
-  const { rooms } = useRoomStore();
+  const { rooms, getActiveRooms } = useRoomStore();
   const { bookings } = useBookingStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string | undefined>();
   const [initialStartTime, setInitialStartTime] = useState<string | undefined>();
   const [viewingBookingId, setViewingBookingId] = useState<string | null>(null);
+
+  const activeRooms = getActiveRooms();
 
   const handleNewBooking = (roomId: string, startTime?: string) => {
     setSelectedRoomId(roomId);
@@ -40,9 +42,9 @@ export default function SchedulePage() {
         <div className="bg-white rounded-xl p-5 shadow-soft border border-sandal-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-ink-500">包间总数</p>
+              <p className="text-sm text-ink-500">可用包间</p>
               <p className="font-song text-3xl font-bold text-sandal-900 mt-1">
-                {rooms.length}
+                {activeRooms.length}
                 <span className="text-base font-normal text-ink-400 ml-1">间</span>
               </p>
             </div>
@@ -70,7 +72,7 @@ export default function SchedulePage() {
         <div className="bg-gradient-to-br from-sandal-900 to-sandal-800 rounded-xl p-5 shadow-card text-white">
           <p className="text-sm text-sandal-300">快速创建</p>
           <button
-            onClick={() => handleNewBooking(rooms[0]?.id)}
+            onClick={() => handleNewBooking(activeRooms[0]?.id)}
             className="w-full mt-3 px-4 py-2.5 rounded-lg bg-gold-500 text-sandal-900 font-medium hover:bg-gold-400 transition-colors flex items-center justify-center gap-2"
           >
             <Plus size={18} />
@@ -82,6 +84,7 @@ export default function SchedulePage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-song text-xl font-bold text-sandal-900">排期日历</h2>
+          <p className="text-sm text-ink-400">点击空档快速创建预订</p>
         </div>
         <Calendar
           rooms={rooms}

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Info, XCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Booking, Room } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
 import { useBillStore } from '../../store/useBillStore';
@@ -7,7 +7,6 @@ import {
   getWeekDates,
   formatDate,
   getWeekdayLabel,
-  getDurationHours,
   parseDateTime,
   formatTime,
 } from '../../utils/datetime';
@@ -22,6 +21,7 @@ interface CalendarProps {
 const HOUR_START = 8;
 const HOUR_END = 23;
 const HOURS = Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i);
+const ROW_HEIGHT = 52;
 
 export default function Calendar({ rooms, onNewBooking, onViewBooking }: CalendarProps) {
   const { bookings } = useBookingStore();
@@ -34,82 +34,68 @@ export default function Calendar({ rooms, onNewBooking, onViewBooking }: Calenda
   } | null>(null);
 
   const weekDates = useMemo(() => getWeekDates(currentDate), [currentDate]);
+  const activeRooms = useMemo(() => rooms.filter((r) => r.active), [rooms]);
 
   const prevWeek = () => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() - 7);
-    setCurrentDate(newDate);
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() - 7);
+    setCurrentDate(d);
   };
 
   const nextWeek = () => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + 7);
-    setCurrentDate(newDate);
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() + 7);
+    setCurrentDate(d);
   };
 
-  const goToday = () => {
-    setCurrentDate(new Date());
-  };
+  const goToday = () => setCurrentDate(new Date());
 
   const getBookingsForRoomAndDate = (roomId: string, date: Date) => {
     return bookings.filter((b) => {
-      if (b.roomId !== roomId) return false;
-      if (b.status === 'cancelled') return false;
-
-      const bookingStart = parseDateTime(b.startTime);
-      const bookingEnd = parseDateTime(b.endTime);
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      return bookingStart <= dayEnd && bookingEnd >= dayStart;
+      if (b.roomId !== roomId || b.status === 'cancelled') return false;
+      const bs = parseDateTime(b.startTime);
+      const be = parseDateTime(b.endTime);
+      const ds = new Date(date);
+      ds.setHours(0, 0, 0, 0);
+      const de = new Date(date);
+      de.setHours(23, 59, 59, 999);
+      return bs <= de && be >= ds;
     });
   };
 
   const getBookingStyle = (booking: Booking, date: Date) => {
-    const bookingStart = parseDateTime(booking.startTime);
-    const bookingEnd = parseDateTime(booking.endTime);
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
+    const bs = parseDateTime(booking.startTime);
+    const be = parseDateTime(booking.endTime);
+    const ds = new Date(date);
+    ds.setHours(0, 0, 0, 0);
+    const de = new Date(date);
+    de.setHours(23, 59, 59, 999);
 
-    const visibleStart = new Date(Math.max(bookingStart.getTime(), dayStart.getTime()));
-    const visibleEnd = new Date(Math.min(bookingEnd.getTime(), dayEnd.getTime()));
+    const vs = new Date(Math.max(bs.getTime(), ds.getTime()));
+    const ve = new Date(Math.min(be.getTime(), de.getTime()));
 
-    const startHour = visibleStart.getHours() + visibleStart.getMinutes() / 60;
-    const endHour = visibleEnd.getHours() + visibleEnd.getMinutes() / 60;
+    const sh = vs.getHours() + vs.getMinutes() / 60;
+    const eh = ve.getHours() + ve.getMinutes() / 60;
 
-    const topPercent = ((startHour - HOUR_START) / (HOUR_END - HOUR_START)) * 100;
-    const heightPercent = ((endHour - startHour) / (HOUR_END - HOUR_START)) * 100;
+    const totalRange = HOUR_END - HOUR_START;
+    const left = ((sh - HOUR_START) / totalRange) * 100;
+    const width = ((eh - sh) / totalRange) * 100;
 
     return {
-      top: `${topPercent}%`,
-      height: `${Math.max(heightPercent, 3)}%`,
+      left: `${left}%`,
+      width: `${Math.max(width, 2)}%`,
     };
   };
 
-  const handleCellClick = (roomId: string, date: Date, hour: number) => {
+  const handleEmptyClick = (roomId: string, date: Date, e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const ratio = x / rect.width;
+    const hourOffset = ratio * (HOUR_END - HOUR_START);
+    const hour = Math.floor(HOUR_START + hourOffset);
     const startDate = new Date(date);
     startDate.setHours(hour, 0, 0, 0);
     onNewBooking(roomId, startDate.toISOString());
-  };
-
-  const handleBookingHover = (
-    e: React.MouseEvent,
-    booking: Booking | null
-  ) => {
-    if (booking) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      setHoverInfo({
-        booking,
-        x: rect.right + 10,
-        y: rect.top,
-      });
-    } else {
-      setHoverInfo(null);
-    }
   };
 
   const getStatusColor = (status: string) => {
@@ -124,6 +110,8 @@ export default function Calendar({ rooms, onNewBooking, onViewBooking }: Calenda
         return 'bg-gold-500/90 text-white';
     }
   };
+
+  const timelineHeight = activeRooms.length * ROW_HEIGHT;
 
   return (
     <div className="bg-white rounded-2xl shadow-soft border border-sandal-200 overflow-hidden">
@@ -164,117 +152,120 @@ export default function Calendar({ rooms, onNewBooking, onViewBooking }: Calenda
         </div>
       </div>
 
-      <div className="flex overflow-x-auto">
-        <div className="min-w-[120px] w-[120px] flex-shrink-0 border-r border-sandal-200 bg-sandal-50/30">
-          <div className="h-16 border-b border-sandal-200 flex items-center justify-center">
-            <span className="text-sm font-medium text-ink-500">时间 / 包间</span>
-          </div>
-          <div className="relative" style={{ height: `${HOURS.length * 48}px` }}>
-            {HOURS.map((hour) => (
-              <div
-                key={hour}
-                className="absolute left-0 right-0 flex items-center justify-center text-xs text-ink-400"
-                style={{ top: `${((hour - HOUR_START) / (HOUR_END - HOUR_START)) * 100}%` }}
-              >
-                {String(hour).padStart(2, '0')}:00
+      <div className="overflow-x-auto">
+        <div className="min-w-[900px]">
+          <div className="flex border-b border-sandal-200">
+            <div className="w-28 flex-shrink-0 border-r border-sandal-200 bg-sandal-50/30">
+              <div className="h-10 border-b border-sandal-100 flex items-center justify-center text-xs text-ink-400">
+                时间
               </div>
-            ))}
-          </div>
-        </div>
+              <div style={{ height: `${timelineHeight}px` }} className="relative">
+                {activeRooms.map((room, idx) => (
+                  <div
+                    key={room.id}
+                    className={`absolute left-0 right-0 flex items-center justify-center border-b border-sandal-100 ${
+                      idx % 2 === 0 ? 'bg-white' : 'bg-sandal-50/30'
+                    }`}
+                    style={{ top: idx * ROW_HEIGHT, height: ROW_HEIGHT }}
+                  >
+                    <span className="text-xs font-medium text-ink-700 truncate px-1">
+                      {room.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-        <div className="flex flex-1 min-w-0">
-          {weekDates.map((date) => {
-            const isToday = formatDate(date) === formatDate(new Date());
-            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+            {weekDates.map((date) => {
+              const isToday = formatDate(date) === formatDate(new Date());
+              const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
-            return (
-              <div key={formatDate(date)} className="flex-1 min-w-[140px] border-r border-sandal-100 last:border-r-0">
-                <div
-                  className={`h-16 border-b border-sandal-200 flex flex-col items-center justify-center ${
-                    isToday ? 'bg-gold-50' : ''
-                  }`}
-                >
-                  <span
-                    className={`text-xs ${
-                      isWeekend ? 'text-red-400' : 'text-ink-400'
+              return (
+                <div key={formatDate(date)} className="flex-1 min-w-[110px] border-r border-sandal-100 last:border-r-0">
+                  <div
+                    className={`h-10 border-b border-sandal-100 flex flex-col items-center justify-center ${
+                      isToday ? 'bg-gold-50' : ''
                     }`}
                   >
-                    {getWeekdayLabel(date)}
-                  </span>
-                  <span
-                    className={`text-lg font-bold ${
-                      isToday ? 'text-gold-600' : 'text-ink-700'
-                    }`}
-                  >
-                    {date.getDate()}
-                  </span>
-                </div>
+                    <span className={`text-[10px] leading-tight ${isWeekend ? 'text-red-400' : 'text-ink-400'}`}>
+                      {getWeekdayLabel(date)}
+                    </span>
+                    <span className={`text-sm font-bold leading-tight ${isToday ? 'text-gold-600' : 'text-ink-700'}`}>
+                      {date.getDate()}
+                    </span>
+                  </div>
 
-                <div className="relative" style={{ height: `${HOURS.length * 48}px` }}>
-                  {HOURS.map((hour, idx) => (
-                    <div
-                      key={hour}
-                      className={`absolute left-0 right-0 border-t border-sandal-100 ${
-                        idx % 2 === 0 ? 'bg-white' : 'bg-sandal-50/30'
-                      }`}
-                      style={{
-                        top: `${((hour - HOUR_START) / (HOUR_END - HOUR_START)) * 100}%`,
-                        height: `${(1 / (HOUR_END - HOUR_START)) * 100}%`,
-                      }}
-                    />
-                  ))}
+                  <div style={{ height: `${timelineHeight}px` }} className="relative">
+                    {activeRooms.map((room, rIdx) => {
+                      const roomBookings = getBookingsForRoomAndDate(room.id, date);
 
-                  {rooms.map((room) => {
-                    const roomBookings = getBookingsForRoomAndDate(room.id, date);
-
-                    return (
-                      <div key={room.id} className="absolute inset-0">
-                        {roomBookings.map((booking) => {
-                          const style = getBookingStyle(booking, date);
-                          const bill = getBillByBookingId(booking.id);
-
-                          return (
-                            <div
-                              key={booking.id}
-                              className={`absolute left-1 right-1 rounded-md px-2 py-1 overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02] z-10 ${getStatusColor(
-                                booking.status
-                              )}`}
-                              style={style}
-                              onClick={() => onViewBooking(booking.id)}
-                              onMouseEnter={(e) => handleBookingHover(e, booking)}
-                              onMouseLeave={(e) => handleBookingHover(e, null)}
-                            >
-                              <div className="text-xs font-medium truncate">
-                                {booking.customerName}
-                              </div>
-                              {bill && (
-                                <div className="text-xs opacity-80 truncate">
-                                  {formatCurrency(bill.finalAmount)}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                        {HOURS.map((hour) => (
+                      return (
+                        <div
+                          key={room.id}
+                          className={`absolute left-0 right-0 border-b border-sandal-100 ${
+                            rIdx % 2 === 0 ? 'bg-white' : 'bg-sandal-50/20'
+                          }`}
+                          style={{ top: rIdx * ROW_HEIGHT, height: ROW_HEIGHT }}
+                        >
                           <div
-                            key={`${room.id}-${hour}`}
-                            className="absolute left-0 right-0 cursor-pointer hover:bg-gold-100/30 transition-colors z-[5]"
-                            style={{
-                              top: `${((hour - HOUR_START) / (HOUR_END - HOUR_START)) * 100}%`,
-                              height: `${(1 / (HOUR_END - HOUR_START)) * 100}%`,
-                            }}
-                            onClick={() => handleCellClick(room.id, date, hour)}
-                            title="点击创建预订"
+                            className="absolute inset-0 cursor-pointer hover:bg-gold-100/20 transition-colors"
+                            onClick={(e) => handleEmptyClick(room.id, date, e)}
                           />
-                        ))}
-                      </div>
-                    );
-                  })}
+
+                          {roomBookings.map((booking) => {
+                            const style = getBookingStyle(booking, date);
+                            const bill = getBillByBookingId(booking.id);
+
+                            return (
+                              <div
+                                key={booking.id}
+                                className={`absolute top-1 bottom-1 rounded-md px-1.5 overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md hover:brightness-110 z-10 flex items-center ${getStatusColor(booking.status)}`}
+                                style={style}
+                                onClick={() => onViewBooking(booking.id)}
+                                onMouseEnter={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setHoverInfo({ booking, x: rect.right + 8, y: rect.top });
+                                }}
+                                onMouseLeave={() => setHoverInfo(null)}
+                              >
+                                <span className="text-[11px] font-medium truncate leading-tight">
+                                  {booking.customerName}
+                                  {bill && (
+                                    <span className="ml-1 opacity-80">
+                                      {formatCurrency(bill.finalAmount)}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          <div className="flex border-t border-sandal-200 bg-sandal-50/30">
+            <div className="w-28 flex-shrink-0 border-r border-sandal-200" />
+            <div className="flex-1 relative" style={{ height: '28px' }}>
+              {HOURS.filter((h) => h % 2 === 0 || h === HOUR_START).map((hour) => {
+                const totalRange = HOUR_END - HOUR_START;
+                const left = ((hour - HOUR_START) / totalRange) * 100;
+                return (
+                  <span
+                    key={hour}
+                    className="absolute text-[10px] text-ink-400 -translate-x-1/2"
+                    style={{ left: `${left}%`, top: '4px' }}
+                  >
+                    {String(hour).padStart(2, '0')}:00
+                  </span>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 

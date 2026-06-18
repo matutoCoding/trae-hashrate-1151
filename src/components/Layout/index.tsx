@@ -6,6 +6,7 @@ import {
   Leaf,
   Menu,
   X,
+  Building2,
 } from 'lucide-react';
 import type { PageType } from '../../types';
 
@@ -16,6 +17,7 @@ interface LayoutProps {
 }
 
 const navItems: { key: PageType; label: string; icon: React.ReactNode }[] = [
+  { key: 'rooms', label: '包间档案', icon: <Building2 size={20} /> },
   { key: 'schedule', label: '包间排期', icon: <CalendarClock size={20} /> },
   { key: 'rate', label: '时段费率', icon: <Clock3 size={20} /> },
   { key: 'billing', label: '消费核算', icon: <Receipt size={20} /> },

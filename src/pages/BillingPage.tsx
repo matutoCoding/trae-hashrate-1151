@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { Receipt, Search, Filter, ChevronDown, Eye, CheckCircle, RefreshCw } from 'lucide-react';
+import {
+  Receipt, Search, Filter, ChevronDown, Eye, CheckCircle,
+  RefreshCw, ArrowDown, ArrowUp, Minus, RotateCcw,
+} from 'lucide-react';
 import { useBillStore } from '../store/useBillStore';
 import { useBookingStore } from '../store/useBookingStore';
 import { useRoomStore } from '../store/useRoomStore';
@@ -295,20 +298,38 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
     0
   );
 
+  const hasMinConsumptionSupplement = bill.baseAmount < bill.minConsumption;
+  const supplementAmount = hasMinConsumptionSupplement
+    ? bill.minConsumption - bill.baseAmount
+    : 0;
+
   const getStatusInfo = (status: string) => {
     switch (status) {
       case 'pending':
-        return { text: '待结算', className: 'bg-amber-100 text-amber-700' };
+        return { text: '待结算', className: 'bg-amber-100 text-amber-700', icon: <Minus size={14} /> };
       case 'settled':
-        return { text: '已结算', className: 'bg-bamboo-100 text-bamboo-700' };
+        return { text: '已结算', className: 'bg-bamboo-100 text-bamboo-700', icon: <CheckCircle size={14} /> };
       case 'refunded':
-        return { text: '已退款', className: 'bg-ink-100 text-ink-500' };
+        return { text: '已退款', className: 'bg-ink-100 text-ink-500', icon: <RotateCcw size={14} /> };
       default:
-        return { text: status, className: 'bg-ink-100 text-ink-500' };
+        return { text: status, className: 'bg-ink-100 text-ink-500', icon: <Minus size={14} /> };
     }
   };
 
   const statusInfo = getStatusInfo(bill.status);
+
+  const bookingStatusInfo = (() => {
+    switch (booking.status) {
+      case 'confirmed':
+        return { text: '已确认', className: 'bg-gold-100 text-gold-700' };
+      case 'completed':
+        return { text: '已完成', className: 'bg-bamboo-100 text-bamboo-700' };
+      case 'cancelled':
+        return { text: '已取消', className: 'bg-ink-100 text-ink-500' };
+      default:
+        return { text: booking.status, className: 'bg-ink-100 text-ink-500' };
+    }
+  })();
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -319,12 +340,34 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
       <div className="relative w-full max-w-md bg-white shadow-elevated animate-slide-up overflow-hidden flex flex-col">
         <div className="px-6 py-4 border-b border-sandal-200 bg-sandal-50 flex items-center justify-between">
           <h3 className="font-song text-lg font-bold text-sandal-900">账单详情</h3>
-          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusInfo.className}`}>
-            {statusInfo.text}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusInfo.className} flex items-center gap-1`}>
+              {statusInfo.icon}
+              {statusInfo.text}
+            </span>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          {bill.status === 'refunded' && (
+            <div className="bg-ink-50 rounded-xl p-4 border border-ink-200">
+              <div className="flex items-start gap-2">
+                <RotateCcw className="text-ink-400 flex-shrink-0 mt-0.5" size={18} />
+                <div>
+                  <p className="font-medium text-ink-600">已退订退款</p>
+                  <p className="text-sm text-ink-400 mt-1">
+                    预订已取消，对应排期已释放，账单已标记为已退款
+                  </p>
+                  {booking.status === 'cancelled' && (
+                    <p className="text-xs text-ink-400 mt-1">
+                      预订状态：已取消 · 排期已释放
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-sandal-50 rounded-xl p-4 border border-sandal-200">
             <h4 className="font-medium text-ink-700 mb-3">客户信息</h4>
             <div className="space-y-2 text-sm">
@@ -339,6 +382,12 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
               <div className="flex justify-between">
                 <span className="text-ink-500">人数</span>
                 <span className="text-ink-800">{booking.guests} 人</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-ink-500">预订状态</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${bookingStatusInfo.className}`}>
+                  {bookingStatusInfo.text}
+                </span>
               </div>
             </div>
           </div>
@@ -356,8 +405,13 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-500">最低消费</span>
-                <span className="text-ink-800">¥{bill.minConsumption.toFixed(2)}</span>
+                <span className="text-ink-800 font-medium">¥{bill.minConsumption.toFixed(2)}</span>
               </div>
+              {!room.active && (
+                <div className="mt-1 text-xs text-amber-600">
+                  ⚠ 该包间当前已停用
+                </div>
+              )}
             </div>
           </div>
 
@@ -376,33 +430,31 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
 
           <div>
             <h4 className="font-medium text-ink-700 mb-3">分段计费明细</h4>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {bill.tierDetails.map((seg, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between py-2 border-b border-sandal-100 last:border-0"
+                  className="bg-white rounded-lg p-3 border border-sandal-200"
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: seg.color }}
-                    />
-                    <div>
-                      <div className="text-sm font-medium text-ink-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: seg.color }}
+                      />
+                      <span className="text-sm font-medium text-ink-700">
                         {seg.tierLabel}
-                      </div>
-                      <div className="text-xs text-ink-400">
-                        {seg.startTime} - {seg.endTime}
-                      </div>
+                      </span>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-ink-800">
+                    <span className="font-song text-base font-bold text-gold-600">
                       ¥{seg.amount.toFixed(2)}
-                    </div>
-                    <div className="text-xs text-ink-400">
-                      {seg.durationHours} 小时
-                    </div>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-ink-400">
+                    <span>{seg.startTime} - {seg.endTime}</span>
+                    <span>
+                      ¥{seg.pricePerHour.toFixed(2)}/h × {seg.durationHours}h = ¥{seg.amount.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -410,24 +462,50 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
           </div>
 
           <div className="bg-gradient-to-br from-sandal-900 to-sandal-800 rounded-xl p-5 text-white">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-sandal-300">基础费用</span>
-                <span>¥{bill.baseAmount.toFixed(2)}</span>
+            <h4 className="text-sandal-300 text-sm mb-3">核算过程</h4>
+            <div className="space-y-2.5 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-sandal-300">① 分段合计（基础费用）</span>
+                <span className="text-sandal-200">¥{bill.baseAmount.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sandal-300">最低消费</span>
-                <span>¥{bill.minConsumption.toFixed(2)}</span>
+
+              <div className="flex justify-between items-center">
+                <span className="text-sandal-300">② 包间最低消费</span>
+                <span className="text-sandal-200">¥{bill.minConsumption.toFixed(2)}</span>
               </div>
-              {bill.baseAmount < bill.minConsumption && (
-                <div className="flex justify-between text-gold-400">
-                  <span>低消补足</span>
-                  <span>+¥{(bill.finalAmount - bill.baseAmount).toFixed(2)}</span>
+
+              <div className="flex items-center gap-2 text-xs py-1">
+                <span className="text-sandal-400">
+                  {hasMinConsumptionSupplement ? '① ＜ ②' : '① ≥ ②'}
+                </span>
+                <span className="text-sandal-400">
+                  {hasMinConsumptionSupplement
+                    ? '基础费用未达低消门槛'
+                    : '基础费用已满足低消门槛'}
+                </span>
+              </div>
+
+              {hasMinConsumptionSupplement && (
+                <div className="flex justify-between items-center pl-3 border-l-2 border-gold-500">
+                  <span className="text-gold-400 flex items-center gap-1">
+                    <ArrowUp size={14} />
+                    低消补足
+                  </span>
+                  <span className="text-gold-400 font-medium">
+                    +¥{supplementAmount.toFixed(2)}
+                  </span>
                 </div>
               )}
-              <div className="pt-3 mt-2 border-t border-sandal-700">
+
+              <div className="flex justify-between items-center text-xs text-sandal-400 pt-1">
+                <span>
+                  最终应收 = max(①, ②) = max(¥{bill.baseAmount.toFixed(2)}, ¥{bill.minConsumption.toFixed(2)})
+                </span>
+              </div>
+
+              <div className="pt-3 mt-1 border-t border-sandal-700">
                 <div className="flex justify-between items-center">
-                  <span className="text-sandal-200 font-medium">应付金额</span>
+                  <span className="text-sandal-200 font-medium">最终应收</span>
                   <span className="font-song text-3xl font-bold text-gold-400">
                     ¥{bill.finalAmount.toFixed(2)}
                   </span>
@@ -435,14 +513,23 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
               </div>
             </div>
           </div>
+
+          <div className="bg-sandal-50 rounded-xl p-3 border border-sandal-200">
+            <div className="flex justify-between text-xs text-ink-400">
+              <span>账单编号</span>
+              <span className="font-mono">{bill.id}</span>
+            </div>
+            <div className="flex justify-between text-xs text-ink-400 mt-1">
+              <span>创建时间</span>
+              <span>{formatDateTime(parseDateTime(bill.createdAt))}</span>
+            </div>
+          </div>
         </div>
 
         <div className="px-6 py-4 border-t border-sandal-200 bg-white">
           {bill.status === 'pending' ? (
             <button
-              onClick={() => {
-                settleBill(bill.id);
-              }}
+              onClick={() => settleBill(bill.id)}
               className="w-full px-4 py-3 rounded-lg bg-bamboo-500 text-white font-medium hover:bg-bamboo-600 transition-colors flex items-center justify-center gap-2"
             >
               <CheckCircle size={18} />

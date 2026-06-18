@@ -1,22 +1,39 @@
 import { useState } from 'react';
-import { Edit3, Check, X, Clock } from 'lucide-react';
+import { Edit3, Check, X, Clock, AlertTriangle } from 'lucide-react';
 import type { RateTier } from '../../types';
+import { validateTierOverlap } from '../../store/useRateStore';
 
 interface RateCardProps {
   tier: RateTier;
+  allTiers: RateTier[];
   onUpdate: (id: string, data: Partial<RateTier>) => void;
 }
 
-export default function RateCard({ tier, onUpdate }: RateCardProps) {
+export default function RateCard({ tier, allTiers, onUpdate }: RateCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     pricePerHour: tier.pricePerHour,
     startTime: tier.startTime,
     endTime: tier.endTime,
   });
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const handleSave = () => {
+    const hypotheticalTiers = allTiers.map((t) =>
+      t.id === tier.id ? { ...t, ...editData } : t
+    );
+    const errors = validateTierOverlap(hypotheticalTiers);
+    const relevantErrors = errors.filter(
+      (e) => e.includes(tier.label)
+    );
+
+    if (relevantErrors.length > 0) {
+      setValidationErrors(relevantErrors);
+      return;
+    }
+
     onUpdate(tier.id, editData);
+    setValidationErrors([]);
     setIsEditing(false);
   };
 
@@ -26,6 +43,7 @@ export default function RateCard({ tier, onUpdate }: RateCardProps) {
       startTime: tier.startTime,
       endTime: tier.endTime,
     });
+    setValidationErrors([]);
     setIsEditing(false);
   };
 
@@ -70,7 +88,9 @@ export default function RateCard({ tier, onUpdate }: RateCardProps) {
 
   return (
     <div
-      className={`bg-gradient-to-br ${getBgColor()} border rounded-2xl p-6 transition-all duration-300 hover:shadow-card`}
+      className={`bg-gradient-to-br ${getBgColor()} border rounded-2xl p-6 transition-all duration-300 hover:shadow-card ${
+        validationErrors.length > 0 ? 'ring-2 ring-red-300' : ''
+      }`}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -131,6 +151,17 @@ export default function RateCard({ tier, onUpdate }: RateCardProps) {
               />
             </div>
           </div>
+
+          {validationErrors.length > 0 && (
+            <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+              {validationErrors.map((err, idx) => (
+                <div key={idx} className="flex items-start gap-1.5 text-red-600 text-sm">
+                  <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+                  <span>{err}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="flex gap-2 pt-2">
             <button

@@ -93,6 +93,7 @@ function matchRateTiers(
         tierName: tier.name,
         tierLabel: tier.label,
         color: tier.color,
+        pricePerHour: tier.pricePerHour,
         startTime: formatTime(overlapStart),
         endTime: formatTime(overlapEnd),
         durationHours: Math.round(durationHours * 100) / 100,
