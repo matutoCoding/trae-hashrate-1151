@@ -23,12 +23,9 @@ export default function RateCard({ tier, allTiers, onUpdate }: RateCardProps) {
       t.id === tier.id ? { ...t, ...editData } : t
     );
     const errors = validateTierOverlap(hypotheticalTiers);
-    const relevantErrors = errors.filter(
-      (e) => e.includes(tier.label)
-    );
 
-    if (relevantErrors.length > 0) {
-      setValidationErrors(relevantErrors);
+    if (errors.length > 0) {
+      setValidationErrors(errors);
       return;
     }
 

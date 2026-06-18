@@ -53,7 +53,7 @@ export default function Calendar({ rooms, onNewBooking, onViewBooking }: Calenda
 
   const getBookingsForRoomAndDate = (roomId: string, date: Date) => {
     return bookings.filter((b) => {
-      if (b.roomId !== roomId || b.status === 'cancelled') return false;
+      if (b.roomId !== roomId) return false;
       const bs = parseDateTime(b.startTime);
       const be = parseDateTime(b.endTime);
       const ds = new Date(date);
@@ -223,11 +223,12 @@ export default function Calendar({ rooms, onNewBooking, onViewBooking }: Calenda
                           {roomBookings.map((booking) => {
                             const style = getBookingStyle(booking, date);
                             const bill = getBillByBookingId(booking.id);
+                            const isCancelled = booking.status === 'cancelled';
 
                             return (
                               <div
                                 key={booking.id}
-                                className={`absolute top-1 bottom-1 rounded-md px-1.5 overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md hover:brightness-110 z-10 flex items-center ${getStatusColor(booking.status)}`}
+                                className={`absolute top-1 bottom-1 rounded-md px-1.5 overflow-hidden cursor-pointer transition-all duration-200 z-10 flex items-center ${getStatusColor(booking.status)} ${isCancelled ? 'opacity-60 hover:opacity-70' : 'hover:shadow-md hover:brightness-110'}`}
                                 style={style}
                                 onClick={() => onViewBooking(booking.id)}
                                 onMouseEnter={(e) => {
@@ -236,9 +237,10 @@ export default function Calendar({ rooms, onNewBooking, onViewBooking }: Calenda
                                 }}
                                 onMouseLeave={() => setHoverInfo(null)}
                               >
-                                <span className="text-[11px] font-medium truncate leading-tight">
+                                <span className={`text-[11px] font-medium truncate leading-tight ${isCancelled ? 'line-through' : ''}`}>
                                   {booking.customerName}
-                                  {bill && (
+                                  {isCancelled && <span className="ml-1 text-[9px] bg-white/30 px-1 rounded">已取消</span>}
+                                  {bill && !isCancelled && (
                                     <span className="ml-1 opacity-80">
                                       {formatCurrency(bill.finalAmount)}
                                     </span>

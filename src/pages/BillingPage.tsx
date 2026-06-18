@@ -40,7 +40,12 @@ export default function BillingPage() {
   const totalSettled = bills.filter((b) => b.status === 'settled').length;
   const totalAmount = bills
     .filter((b) => b.status === 'settled')
-    .reduce((sum, b) => sum + b.finalAmount, 0);
+    .reduce((sum, b) => {
+      const room = getRoomById(b.roomId);
+      const currentMinConsumption = room?.minConsumption ?? b.minConsumption;
+      const finalAmount = Math.max(b.baseAmount, currentMinConsumption);
+      return sum + finalAmount;
+    }, 0);
 
   const getStatusInfo = (status: string) => {
     switch (status) {

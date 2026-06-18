@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Users, Clock, AlertTriangle, CheckCircle, Ban } from 'lucide-react';
 import { useRoomStore } from '../../store/useRoomStore';
 import { useBookingStore } from '../../store/useBookingStore';
@@ -30,6 +30,7 @@ export default function BookingModal({
 
   const activeRooms = getActiveRooms();
   const hasActiveRooms = activeRooms.length > 0;
+  const wasOpen = useRef(false);
 
   const [formData, setFormData] = useState({
     roomId: roomId || '',
@@ -49,7 +50,7 @@ export default function BookingModal({
   } | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !wasOpen.current) {
       const start = initialStartTime ? new Date(initialStartTime) : getDefaultStartTime();
       const end = initialEndTime ? new Date(initialEndTime) : getDefaultEndTime(start);
 
@@ -68,7 +69,8 @@ export default function BookingModal({
       setError(null);
       setPreview(null);
     }
-  }, [isOpen, roomId, initialStartTime, initialEndTime, activeRooms]);
+    wasOpen.current = isOpen;
+  }, [isOpen]);
 
   useEffect(() => {
     if (formData.roomId && formData.startTime && formData.endTime) {
