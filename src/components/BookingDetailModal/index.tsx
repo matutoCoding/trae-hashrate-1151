@@ -66,9 +66,19 @@ export default function BookingDetailModal({
 
   const statusInfo = getStatusLabel(booking.status);
   const duration = getDurationHours(booking.startTime, booking.endTime);
-  const hasMinConsumptionSupplement = bill ? bill.baseAmount < bill.minConsumption : false;
+
+  const currentMinConsumption = room.minConsumption;
+  const originalMinConsumption = bill ? bill.minConsumption : room.minConsumption;
+  const hasMinConsumptionChange = bill && currentMinConsumption !== originalMinConsumption;
+
+  const hasMinConsumptionSupplement = bill ? bill.baseAmount < currentMinConsumption : false;
   const supplementAmount = hasMinConsumptionSupplement && bill
-    ? bill.minConsumption - bill.baseAmount
+    ? currentMinConsumption - bill.baseAmount
+    : 0;
+
+  const displayMinConsumption = currentMinConsumption;
+  const displayFinalAmount = bill
+    ? Math.max(bill.baseAmount, currentMinConsumption)
     : 0;
 
   return (
@@ -127,12 +137,17 @@ export default function BookingDetailModal({
                     {room.capacity}人座
                   </span>
                   <span className="text-ink-600">
-                    低消 ¥{room.minConsumption}
+                    低消 ¥{displayMinConsumption}
                   </span>
                 </div>
                 {!room.active && (
                   <div className="text-xs text-amber-600 mt-1">
                     ⚠ 该包间当前已停用
+                  </div>
+                )}
+                {hasMinConsumptionChange && (
+                  <div className="text-xs text-bamboo-600 mt-1">
+                    ↻ 低消已从 ¥{originalMinConsumption.toFixed(2)} 更新为 ¥{currentMinConsumption.toFixed(2)}
                   </div>
                 )}
               </div>
@@ -224,7 +239,7 @@ export default function BookingDetailModal({
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-ink-600">最低消费</span>
-                  <span className="text-ink-700">¥{bill.minConsumption.toFixed(2)}</span>
+                  <span className="text-ink-700">¥{displayMinConsumption.toFixed(2)}</span>
                 </div>
                 {hasMinConsumptionSupplement && (
                   <div className="flex justify-between text-sm text-amber-600">
@@ -238,14 +253,14 @@ export default function BookingDetailModal({
                 <div className="flex justify-between text-xs text-ink-400 pt-1">
                   <span>
                     {hasMinConsumptionSupplement
-                      ? '基础费用未达低消，按最低消费计费'
+                      ? '基础费用未达低消，按最新低消标准计费'
                       : '基础费用已满足低消门槛'}
                   </span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-sandal-300">
                   <span className="font-medium text-ink-800">应付金额</span>
                   <span className="font-song text-2xl font-bold text-gold-600">
-                    ¥{bill.finalAmount.toFixed(2)}
+                    ¥{displayFinalAmount.toFixed(2)}
                   </span>
                 </div>
               </div>

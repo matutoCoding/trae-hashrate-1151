@@ -202,6 +202,14 @@ export default function BillingPage() {
                     0
                   );
 
+                  const currentMinConsumption = room?.minConsumption ?? bill.minConsumption;
+                  const displayFinalAmount = room
+                    ? Math.max(bill.baseAmount, currentMinConsumption)
+                    : bill.finalAmount;
+                  const hasMinConsumptionSupplement = room
+                    ? bill.baseAmount < currentMinConsumption
+                    : bill.baseAmount < bill.minConsumption;
+
                   return (
                     <tr key={bill.id} className="hover:bg-sandal-50/50 transition-colors">
                       <td className="px-6 py-4">
@@ -216,6 +224,9 @@ export default function BillingPage() {
                         <div className="text-ink-700">{room?.name || '-'}</div>
                         <div className="text-xs text-ink-400 mt-0.5">
                           {room?.capacity}人座
+                          {room && !room.active && (
+                            <span className="ml-1 text-amber-500">（已停用）</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -230,9 +241,9 @@ export default function BillingPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="font-song text-lg font-bold text-gold-600">
-                          ¥{bill.finalAmount.toFixed(2)}
+                          ¥{displayFinalAmount.toFixed(2)}
                         </div>
-                        {bill.baseAmount < bill.minConsumption && (
+                        {hasMinConsumptionSupplement && (
                           <div className="text-xs text-amber-500">含低消补足</div>
                         )}
                       </td>
@@ -298,10 +309,17 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
     0
   );
 
-  const hasMinConsumptionSupplement = bill.baseAmount < bill.minConsumption;
+  const currentMinConsumption = room.minConsumption;
+  const originalMinConsumption = bill.minConsumption;
+  const hasMinConsumptionChange = currentMinConsumption !== originalMinConsumption;
+
+  const hasMinConsumptionSupplement = bill.baseAmount < currentMinConsumption;
   const supplementAmount = hasMinConsumptionSupplement
-    ? bill.minConsumption - bill.baseAmount
+    ? currentMinConsumption - bill.baseAmount
     : 0;
+
+  const displayMinConsumption = currentMinConsumption;
+  const displayFinalAmount = Math.max(bill.baseAmount, currentMinConsumption);
 
   const getStatusInfo = (status: string) => {
     switch (status) {
@@ -405,11 +423,16 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-500">最低消费</span>
-                <span className="text-ink-800 font-medium">¥{bill.minConsumption.toFixed(2)}</span>
+                <span className="text-ink-800 font-medium">¥{displayMinConsumption.toFixed(2)}</span>
               </div>
               {!room.active && (
                 <div className="mt-1 text-xs text-amber-600">
                   ⚠ 该包间当前已停用
+                </div>
+              )}
+              {hasMinConsumptionChange && (
+                <div className="mt-1 text-xs text-bamboo-600">
+                  ↻ 低消已从 ¥{originalMinConsumption.toFixed(2)} 更新为 ¥{currentMinConsumption.toFixed(2)}
                 </div>
               )}
             </div>
@@ -471,7 +494,7 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
 
               <div className="flex justify-between items-center">
                 <span className="text-sandal-300">② 包间最低消费</span>
-                <span className="text-sandal-200">¥{bill.minConsumption.toFixed(2)}</span>
+                <span className="text-sandal-200">¥{displayMinConsumption.toFixed(2)}</span>
               </div>
 
               <div className="flex items-center gap-2 text-xs py-1">
@@ -499,7 +522,7 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
 
               <div className="flex justify-between items-center text-xs text-sandal-400 pt-1">
                 <span>
-                  最终应收 = max(①, ②) = max(¥{bill.baseAmount.toFixed(2)}, ¥{bill.minConsumption.toFixed(2)})
+                  最终应收 = max(①, ②) = max(¥{bill.baseAmount.toFixed(2)}, ¥{displayMinConsumption.toFixed(2)})
                 </span>
               </div>
 
@@ -507,7 +530,7 @@ function BillDetailDrawer({ billId, onClose }: { billId: string; onClose: () => 
                 <div className="flex justify-between items-center">
                   <span className="text-sandal-200 font-medium">最终应收</span>
                   <span className="font-song text-3xl font-bold text-gold-400">
-                    ¥{bill.finalAmount.toFixed(2)}
+                    ¥{displayFinalAmount.toFixed(2)}
                   </span>
                 </div>
               </div>

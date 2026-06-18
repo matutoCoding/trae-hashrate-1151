@@ -29,6 +29,25 @@ export function validateTierOverlap(tiers: RateTier[]): string[] {
     return ['至少需要一个费率时段'];
   }
 
+  const BUSINESS_START = 8 * 60;
+  const BUSINESS_END = 23 * 60;
+
+  const firstStartMin = timeToMinutes(sorted[0].startTime);
+  if (firstStartMin > BUSINESS_START) {
+    const startHour = Math.floor(BUSINESS_START / 60);
+    const startMin = BUSINESS_START % 60;
+    const gapStartStr = `${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`;
+    errors.push(`营业时间开头存在空档（${gapStartStr} - ${sorted[0].startTime}）`);
+  }
+
+  const lastEndMin = timeToMinutes(sorted[sorted.length - 1].endTime);
+  if (lastEndMin < BUSINESS_END) {
+    const endHour = Math.floor(BUSINESS_END / 60);
+    const endMin = BUSINESS_END % 60;
+    const gapEndStr = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
+    errors.push(`营业时间结尾存在空档（${sorted[sorted.length - 1].endTime} - ${gapEndStr}）`);
+  }
+
   for (let i = 0; i < sorted.length; i++) {
     const tier = sorted[i];
     const startMin = timeToMinutes(tier.startTime);
@@ -36,6 +55,20 @@ export function validateTierOverlap(tiers: RateTier[]): string[] {
 
     if (startMin >= endMin) {
       errors.push(`「${tier.label}」开始时间必须早于结束时间`);
+    }
+
+    if (startMin < BUSINESS_START) {
+      const startHour = Math.floor(BUSINESS_START / 60);
+      const startMin2 = BUSINESS_START % 60;
+      const bsStr = `${String(startHour).padStart(2, '0')}:${String(startMin2).padStart(2, '0')}`;
+      errors.push(`「${tier.label}」开始时间（${tier.startTime}）早于营业时间（${bsStr}）`);
+    }
+
+    if (endMin > BUSINESS_END) {
+      const endHour = Math.floor(BUSINESS_END / 60);
+      const endMin2 = BUSINESS_END % 60;
+      const beStr = `${String(endHour).padStart(2, '0')}:${String(endMin2).padStart(2, '0')}`;
+      errors.push(`「${tier.label}」结束时间（${tier.endTime}）晚于营业时间（${beStr}）`);
     }
 
     if (i > 0) {

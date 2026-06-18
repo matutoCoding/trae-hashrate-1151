@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Users, Coffee } from 'lucide-react';
+import { Plus, Users, Coffee, Ban } from 'lucide-react';
 import Calendar from '../components/Calendar';
 import BookingModal from '../components/BookingModal';
 import BookingDetailModal from '../components/BookingDetailModal';
@@ -15,8 +15,11 @@ export default function SchedulePage() {
   const [viewingBookingId, setViewingBookingId] = useState<string | null>(null);
 
   const activeRooms = getActiveRooms();
+  const hasActiveRooms = activeRooms.length > 0;
 
   const handleNewBooking = (roomId: string, startTime?: string) => {
+    const room = getActiveRooms().find((r) => r.id === roomId);
+    if (!room) return;
     setSelectedRoomId(roomId);
     setInitialStartTime(startTime);
     setIsModalOpen(true);
@@ -69,22 +72,50 @@ export default function SchedulePage() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-sandal-900 to-sandal-800 rounded-xl p-5 shadow-card text-white">
-          <p className="text-sm text-sandal-300">快速创建</p>
-          <button
-            onClick={() => handleNewBooking(activeRooms[0]?.id)}
-            className="w-full mt-3 px-4 py-2.5 rounded-lg bg-gold-500 text-sandal-900 font-medium hover:bg-gold-400 transition-colors flex items-center justify-center gap-2"
-          >
-            <Plus size={18} />
-            新建预订
-          </button>
+        <div className={`rounded-xl p-5 shadow-card text-white transition-all ${
+          hasActiveRooms
+            ? 'bg-gradient-to-br from-sandal-900 to-sandal-800'
+            : 'bg-gradient-to-br from-ink-600 to-ink-700'
+        }`}>
+          <p className={`text-sm ${hasActiveRooms ? 'text-sandal-300' : 'text-ink-300'}`}>
+            快速创建
+          </p>
+          {hasActiveRooms ? (
+            <button
+              onClick={() => handleNewBooking(activeRooms[0].id)}
+              className="w-full mt-3 px-4 py-2.5 rounded-lg bg-gold-500 text-sandal-900 font-medium hover:bg-gold-400 transition-colors flex items-center justify-center gap-2"
+            >
+              <Plus size={18} />
+              新建预订
+            </button>
+          ) : (
+            <div className="mt-3 px-4 py-2.5 rounded-lg bg-ink-500/50 text-ink-300 font-medium flex items-center justify-center gap-2 cursor-not-allowed">
+              <Ban size={18} />
+              无可用包间
+            </div>
+          )}
         </div>
       </div>
+
+      {!hasActiveRooms && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <Ban className="text-amber-500 flex-shrink-0 mt-0.5" size={20} />
+          <div>
+            <p className="font-medium text-amber-700">当前没有可用的包间</p>
+            <p className="text-sm text-amber-600 mt-1">
+              请先在「包间档案」中启用至少一个包间后再进行预订操作。
+              停用包间的历史预订和账单仍可正常查看。
+            </p>
+          </div>
+        </div>
+      )}
 
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-song text-xl font-bold text-sandal-900">排期日历</h2>
-          <p className="text-sm text-ink-400">点击空档快速创建预订</p>
+          <p className="text-sm text-ink-400">
+            {hasActiveRooms ? '点击空档快速创建预订' : '暂无可用包间，请先启用包间'}
+          </p>
         </div>
         <Calendar
           rooms={rooms}

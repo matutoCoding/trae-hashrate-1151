@@ -35,6 +35,7 @@ export default function Calendar({ rooms, onNewBooking, onViewBooking }: Calenda
 
   const weekDates = useMemo(() => getWeekDates(currentDate), [currentDate]);
   const activeRooms = useMemo(() => rooms.filter((r) => r.active), [rooms]);
+  const displayRooms = rooms;
 
   const prevWeek = () => {
     const d = new Date(currentDate);
@@ -111,7 +112,7 @@ export default function Calendar({ rooms, onNewBooking, onViewBooking }: Calenda
     }
   };
 
-  const timelineHeight = activeRooms.length * ROW_HEIGHT;
+  const timelineHeight = displayRooms.length * ROW_HEIGHT;
 
   return (
     <div className="bg-white rounded-2xl shadow-soft border border-sandal-200 overflow-hidden">
@@ -160,16 +161,19 @@ export default function Calendar({ rooms, onNewBooking, onViewBooking }: Calenda
                 时间
               </div>
               <div style={{ height: `${timelineHeight}px` }} className="relative">
-                {activeRooms.map((room, idx) => (
+                {displayRooms.map((room, idx) => (
                   <div
                     key={room.id}
                     className={`absolute left-0 right-0 flex items-center justify-center border-b border-sandal-100 ${
                       idx % 2 === 0 ? 'bg-white' : 'bg-sandal-50/30'
-                    }`}
+                    } ${!room.active ? 'bg-ink-50/50' : ''}`}
                     style={{ top: idx * ROW_HEIGHT, height: ROW_HEIGHT }}
                   >
-                    <span className="text-xs font-medium text-ink-700 truncate px-1">
+                    <span className={`text-xs font-medium truncate px-1 flex items-center gap-1 ${
+                      !room.active ? 'text-ink-400' : 'text-ink-700'
+                    }`}>
                       {room.name}
+                      {!room.active && <span className="text-[10px] bg-ink-200 text-ink-500 px-1 rounded">已停用</span>}
                     </span>
                   </div>
                 ))}
@@ -196,7 +200,7 @@ export default function Calendar({ rooms, onNewBooking, onViewBooking }: Calenda
                   </div>
 
                   <div style={{ height: `${timelineHeight}px` }} className="relative">
-                    {activeRooms.map((room, rIdx) => {
+                    {displayRooms.map((room, rIdx) => {
                       const roomBookings = getBookingsForRoomAndDate(room.id, date);
 
                       return (
@@ -204,13 +208,17 @@ export default function Calendar({ rooms, onNewBooking, onViewBooking }: Calenda
                           key={room.id}
                           className={`absolute left-0 right-0 border-b border-sandal-100 ${
                             rIdx % 2 === 0 ? 'bg-white' : 'bg-sandal-50/20'
-                          }`}
+                          } ${!room.active ? 'bg-ink-50/30' : ''}`}
                           style={{ top: rIdx * ROW_HEIGHT, height: ROW_HEIGHT }}
                         >
-                          <div
-                            className="absolute inset-0 cursor-pointer hover:bg-gold-100/20 transition-colors"
-                            onClick={(e) => handleEmptyClick(room.id, date, e)}
-                          />
+                          {room.active ? (
+                            <div
+                              className="absolute inset-0 cursor-pointer hover:bg-gold-100/20 transition-colors"
+                              onClick={(e) => handleEmptyClick(room.id, date, e)}
+                            />
+                          ) : (
+                            <div className="absolute inset-0 cursor-not-allowed" />
+                          )}
 
                           {roomBookings.map((booking) => {
                             const style = getBookingStyle(booking, date);
